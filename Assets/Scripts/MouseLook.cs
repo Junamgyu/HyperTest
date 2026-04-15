@@ -29,6 +29,7 @@ public class MouseLook : MonoBehaviour
     // ─── Runtime State ────────────────────────────────────────────────────────
     private float _pitch       = 0f;
     private bool  _lookEnabled = true;
+    private Quaternion _pivotRotationBefore;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
     private void Awake()
@@ -77,6 +78,43 @@ public class MouseLook : MonoBehaviour
     public void SetLookEnabled(bool enabled)
     {
         _lookEnabled = enabled;
+
+        if(!enabled)
+        {
+            _pivotRotationBefore = _cameraPivot.rotation;
+        }
+        else
+        {
+            _pitch = _cameraPivot.localEulerAngles.x > 180f 
+                ? _cameraPivot.localEulerAngles.x - 360f 
+                : _cameraPivot.localEulerAngles.x;
+        }
+    }
+    public void LockCameraWorldRotation()
+    {
+        _cameraPivot.rotation = _pivotRotationBefore;
+    }
+
+    public void SyncAfterReorient(Transform playerBody, Vector3 newUp)
+    {
+        Vector3 cameraWorldForward = _pivotRotationBefore * Vector3.forward;
+
+        Vector3 horizontalForward = Vector3.ProjectOnPlane(cameraWorldForward, newUp);
+
+        if(horizontalForward.sqrMagnitude > 0.001f)
+        {   //body yaw를 카메라가 보던 수평 방향으로 맞춤
+            playerBody.rotation = Quaternion.LookRotation(horizontalForward.normalized);
+        }
+        
+        float pitch = Vector3.SignedAngle(
+            horizontalForward.normalized,
+            cameraWorldForward,
+            playerBody.right
+        );
+
+        _pitch = Mathf.Clamp(pitch, MIN_PITCH, MAX_PITCH);
+        _cameraPivot.localRotation = Quaternion.Euler(_pitch, 0f, 0f);
+
     }
 
     /// <summary>카메라 피치를 수평으로 리셋합니다 (필요 시 외부에서 호출).</summary>
