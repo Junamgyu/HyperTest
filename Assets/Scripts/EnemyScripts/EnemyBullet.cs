@@ -43,9 +43,15 @@ public class EnemyBullet : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            // TODO: 플레이어 데미지 처리
-            // collision.gameObject.GetComponent<PlayerHealth>()?.TakeDamage(_damage);
-            Debug.Log($"[EnemyBullet] 플레이어에게 {_damage} 데미지!");
+            PlayerHealth health = collision.gameObject.GetComponent<PlayerHealth>();
+
+            if(health == null)
+                health = collision.gameObject.GetComponentInParent<PlayerHealth>();
+
+            if(health != null)
+                health.TakeDamage(_damage);
+            else
+                Debug.Log($"[EnemyBullet] 플레이어에게 {_damage} 데미지!");
         }
 
         Destroy(gameObject);

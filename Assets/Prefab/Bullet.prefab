@@ -154,7 +154,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bullet
   _lifetime: 1.8
-  _damage: 10
+  _damage: 20
   _hitMask:
     serializedVersion: 2
     m_Bits: 64

@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2199180864735671988}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: MuzzlePivot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -45,7 +45,7 @@ GameObject:
   - component: {fileID: 2875958076314446683}
   - component: {fileID: 2431630354127257100}
   - component: {fileID: 1616750018957050294}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: ShooterEnemy
   m_TagString: Untagged
   m_Icon: {fileID: 0}

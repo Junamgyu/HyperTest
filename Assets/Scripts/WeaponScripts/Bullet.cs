@@ -55,9 +55,8 @@ public class Bullet : MonoBehaviour
         // _hitMask에 포함된 레이어만 처리
         if ((_hitMask.value & (1 << collision.gameObject.layer)) == 0) return;
 
-        // TODO: 적 데미지 처리 (다음 단계에서 구현)
-        // if (collision.gameObject.TryGetComponent<IDamageable>(out var target))
-        //     target.TakeDamage(_damage);
+        if (collision.gameObject.TryGetComponent<EnemyBase>(out var enemy))
+        enemy.TakeDamage(_damage);
 
         Destroy(gameObject);
     }
@@ -66,7 +65,9 @@ public class Bullet : MonoBehaviour
     {
         if ((_hitMask.value & (1 << other.gameObject.layer)) == 0) return;
 
-        // TODO: 적 데미지 처리
+        if (other.TryGetComponent<EnemyBase>(out var enemy))
+        enemy.TakeDamage(_damage);
+        
         Destroy(gameObject);
     }
 }
