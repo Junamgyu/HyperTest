@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Cinemachine;
 
 /// <summary>
 /// 1인칭 마우스 시점 제어.
@@ -23,6 +24,10 @@ public class MouseLook : MonoBehaviour
     [SerializeField] private float _sensitivity = 2.5f;
     [SerializeField] private bool  _invertY     = false;
 
+    [Header("Camera Effects")]
+    [SerializeField] private float _slideCameraLower = 0.4f;    //내려가는 양
+    [SerializeField] private float _slideLowerSpeed = 8f;       //내려가는 속도
+
     [Header("References")]
     [SerializeField] private Transform _cameraPivot; // 카메라를 담고 있는 자식 오브젝트
 
@@ -30,6 +35,9 @@ public class MouseLook : MonoBehaviour
     private float _pitch       = 0f;
     private bool  _lookEnabled = true;
     private Quaternion _pivotRotationBefore;
+
+    private float _targetCameraPivotY;      //슬라이딩 카메라
+    private float _defaultCameraPivotY;
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
     private void Awake()
@@ -41,6 +49,8 @@ public class MouseLook : MonoBehaviour
     private void Start()
     {
         LockCursor(true);
+        _defaultCameraPivotY = _cameraPivot.localPosition.y;
+        _targetCameraPivotY = _defaultCameraPivotY;
     }
 
     private void Update()
@@ -50,6 +60,11 @@ public class MouseLook : MonoBehaviour
 
         if (_lookEnabled && IsCursorLocked())
             HandleMouseLook();
+
+        Vector3 pivotPos = _cameraPivot.localPosition;
+        pivotPos.y = Mathf.Lerp(pivotPos.y, _targetCameraPivotY, _slideLowerSpeed * Time.deltaTime);
+
+        _cameraPivot.localPosition = pivotPos;
     }
 
     // ─── Mouse Look ───────────────────────────────────────────────────────────
@@ -123,6 +138,13 @@ public class MouseLook : MonoBehaviour
         _pitch = 0f;
         if (_cameraPivot != null)
             _cameraPivot.localRotation = Quaternion.identity;
+    }
+
+    public void SetSlideCameraOffset(bool isSliding)
+    {
+        _targetCameraPivotY = isSliding
+            ? _defaultCameraPivotY - _slideCameraLower
+            : _defaultCameraPivotY;
     }
 
     // ─── Cursor ───────────────────────────────────────────────────────────────

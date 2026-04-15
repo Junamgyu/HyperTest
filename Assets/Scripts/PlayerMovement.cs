@@ -18,6 +18,7 @@ public class PlayerMovement : MonoBehaviour
     private const float COYOTE_TIME = 0.12f;
     private const float JUMP_BUFFER_TIME = 0.12f;
     private const float REORIENT_ANGLE_THRESH = 1f;     // 이미 정렬된 것으로 볼 최소 각도차
+    private const float SLIDE_JUMP_WINDOW = 0.4f;       //슬라이딩 중 점프 인정 시간
 
     // ─── Inspector ────────────────────────────────────────────────────────────
     [Header("Movement")]
@@ -30,6 +31,17 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField] private float _jumpHeight = 2.5f;
     [SerializeField] private float _gravityMultiplier = 2.5f;  // 전체 중력 배율
     [SerializeField] private float _fallMultiplier = 4.0f;  // 낙하 중 추가 배율
+
+    [Header("Slide")]   
+    [SerializeField] private float _slideSpeed = 14f;           //슬라이드 초기 속도
+    [SerializeField] private float _slideDuration = 0.6f;       //슬라이드 지속 시간
+    [SerializeField] private float _slideFriction = 8f;         //슬라이드 감속력
+    [SerializeField] private float _slideJumpMultiplier = 1.6f; //슬라이드 점프 전방 배율
+
+    [Header("Dash")]
+    [SerializeField] private float _dashSpeed = 20f;        //대쉬 순간 속도
+    [SerializeField] private float _dashDuration = 0.15f;   //대쉬 지속 시간
+    [SerializeField] private float _dashCooldown = 2f;      //대쉬 쿨타임
 
     [Header("Ground Check")]
     [SerializeField] private LayerMask _groundMask;
@@ -55,10 +67,21 @@ public class PlayerMovement : MonoBehaviour
 
     private Coroutine _reorientCoroutine;
 
+    private bool _isSliding;
+    private float _slideTimer;
+    private float _slideJumpTimer;  //슬라이드 중 점프 가능 시간 추적
+    private Vector3 _slideDirection;
+    private bool _isDashing;
+    private float _dashTimer;
+    private float _dashCooldownTimer;
+    private Vector3 _dashDirection;
     // ─── Properties ───────────────────────────────────────────────────────────
     public bool IsGrounded => _isGrounded;
     public bool IsReorienting => _isReorienting;
     public Vector3 GravityDir => _gravityDir;
+    public bool IsSliding => _isSliding;
+    public bool IsDashing => _isDashing;
+    public float DashCooldownRatio => Mathf.Clamp01(_dashCooldownTimer / _dashCooldown);
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
     private void Awake()
@@ -90,6 +113,8 @@ public class PlayerMovement : MonoBehaviour
     private void Update()
     {
         HandleJumpInput();
+        HandleSlideInput();
+        HandleDashInput();
     }
 
     private void FixedUpdate()
@@ -97,9 +122,18 @@ public class PlayerMovement : MonoBehaviour
         CheckGround();
         DetectLanding();
 
+        if(_slideJumpTimer > 0f)
+            _slideJumpTimer -= Time.fixedDeltaTime;
+
         if (!_isReorienting)
         {
-            ApplyMovement();
+            if(_isDashing)
+                ApplyDash();
+            else if(_isSliding)
+                ApplySlide();
+            else
+                ApplyMovement();
+            
             TryJump();
         }
 
@@ -197,19 +231,105 @@ public class PlayerMovement : MonoBehaviour
     {
         if (_jumpBufferTimer <= 0f || _coyoteTimer <= 0f) return;
 
-        float gravMag   = GravitySystem.Instance != null
-                          ? GravitySystem.Instance.GravityMagnitude
-                          : 9.81f;
+        float gravMag = GravitySystem.Instance != null
+            ? GravitySystem.Instance.GravityMagnitude
+            : 9.81f;
 
         // v = sqrt(2 * g_eff * h),  g_eff = gravMag * _gravityMultiplier
         float jumpSpeed = Mathf.Sqrt(2f * gravMag * _gravityMultiplier * _jumpHeight);
 
         // 수직 속도만 교체 (수평 속도 유지)
         Vector3 horizVel = Vector3.ProjectOnPlane(_rb.linearVelocity, transform.up);
-        _rb.linearVelocity     = horizVel + transform.up * jumpSpeed;
 
+        if(_isSliding || _slideJumpTimer > 0f)
+        {
+            horizVel = _slideDirection * _slideSpeed * _slideJumpMultiplier;
+            _isSliding = false;
+            _slideTimer = 0f;
+            _mouseLook?.SetSlideCameraOffset(false); // 추가
+        }
+
+        _rb.linearVelocity     = horizVel + transform.up * jumpSpeed;
         _jumpBufferTimer = 0f;
         _coyoteTimer     = 0f;
+    }
+    //슬라이딩
+    private void HandleSlideInput()
+    {
+        if(Keyboard.current.leftCtrlKey.wasPressedThisFrame && _isGrounded && !_isSliding && !_isDashing)
+        {
+            _isSliding = true;
+            _slideTimer = _slideDuration;
+            _slideJumpTimer = _slideDuration + SLIDE_JUMP_WINDOW;
+
+            //슬라이드 방향 = 현재 바라보는 수평 방향
+            _slideDirection = Vector3.ProjectOnPlane(transform.forward, transform.up).normalized;
+
+            //슬라이드 초기 속도 부여
+            Vector3 vertVel = Vector3.Project(_rb.linearVelocity, transform.up);
+            _rb.linearVelocity = _slideDirection * _slideSpeed + vertVel;
+
+            _mouseLook?.SetSlideCameraOffset(true);
+        }
+    }
+
+    private void ApplySlide()
+    {
+        _slideTimer -= Time.fixedDeltaTime;
+
+        //슬라이드 방향 속도를 마찰로 감속
+        Vector3 vertVel = Vector3.Project(_rb.linearVelocity, transform.up);
+        Vector3 horizVel = Vector3.ProjectOnPlane(_rb.linearVelocity, transform.up);
+        Vector3 newHorizVel = Vector3.MoveTowards(horizVel, Vector3.zero, _slideFriction * Time.deltaTime);
+    
+        _rb.linearVelocity = newHorizVel + vertVel;
+
+        if(_slideTimer <= 0 || !_isGrounded)
+        {
+             _isSliding = false;
+             _mouseLook?.SetSlideCameraOffset(false);
+        }   
+        
+    }
+
+    private void HandleDashInput()
+    {
+        if(Keyboard.current.leftShiftKey.wasPressedThisFrame && !_isDashing && _dashCooldownTimer <= 0f)
+        {
+            _isDashing = true;
+            _dashTimer = _dashDuration;
+            _dashCooldownTimer = _dashCooldown;
+
+            // 대쉬 방향: 입력 방향 우선, 없으면 바라보는 방향
+            float h = Keyboard.current.dKey.isPressed ? 1f : Keyboard.current.aKey.isPressed ? -1f : 0f;
+            float v = Keyboard.current.wKey.isPressed ? 1f : Keyboard.current.sKey.isPressed ? -1f : 0f;
+
+            Vector3 inputDir = transform.right * h + transform.forward * v;
+            inputDir = Vector3.ProjectOnPlane(inputDir, transform.up);
+
+            _dashDirection = inputDir.sqrMagnitude > 0.01f
+                ? inputDir.normalized
+                : transform.forward;
+
+            // 대쉬 시작 시 기존 속도 제거 후 대쉬 속도 부여
+            Vector3 vertVel    = Vector3.Project(_rb.linearVelocity, transform.up);
+            _rb.linearVelocity = _dashDirection * _dashSpeed + vertVel;
+        }
+        
+        if(_dashCooldownTimer > 0f)
+            _dashCooldownTimer -= Time.deltaTime;
+    }
+
+    private void ApplyDash()
+    {
+        _dashTimer -= Time.fixedDeltaTime;
+
+        //대쉬 중 속도 유지 (중력 방향 제외)
+        Vector3 vertVel = Vector3.Project(_rb.linearVelocity, transform.up);
+        _rb.linearVelocity = _dashDirection * _dashSpeed + vertVel;
+
+        if(_dashTimer <= 0f)
+            _isDashing = false;
     }
 
     // ─── Gravity Change Handler ────────────────────────────────────────────────

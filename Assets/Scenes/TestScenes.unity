@@ -1421,8 +1421,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af7451c1c95d6cb42abca6339c5c5089, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MouseLook
-  _sensitivity: 1
+  _sensitivity: 0.8
   _invertY: 0
+  _slideCameraLower: 1
+  _slideLowerSpeed: 8
   _cameraPivot: {fileID: 420071541}
 --- !u!114 &1022500344
 MonoBehaviour:
@@ -1443,6 +1445,13 @@ MonoBehaviour:
   _jumpHeight: 2.5
   _gravityMultiplier: 2.5
   _fallMultiplier: 4
+  _slideSpeed: 16
+  _slideDuration: 0.6
+  _slideFriction: 8
+  _slideJumpMultiplier: 1.6
+  _dashSpeed: 20
+  _dashDuration: 0.15
+  _dashCooldown: 1.5
   _groundMask:
     serializedVersion: 2
     m_Bits: 8
