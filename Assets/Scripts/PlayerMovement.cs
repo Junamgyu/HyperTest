@@ -82,6 +82,7 @@ public class PlayerMovement : MonoBehaviour
         _rb = GetComponent<Rigidbody>();
         _rb.useGravity = false;        // 중력을 직접 관리
         _rb.freezeRotation = true;     // 물리엔진이 회전 제어 못 하도록
+        _rb.interpolation = RigidbodyInterpolation.Interpolate; // FixedUpdate 사이 위치 보간 (떨림 방지)
 
         // GravitySystem에서 초기 방향 가져오기
         if (GravitySystem.Instance != null)
@@ -273,7 +274,7 @@ public class PlayerMovement : MonoBehaviour
         //슬라이드 방향 속도를 마찰로 감속
         Vector3 vertVel = Vector3.Project(_rb.linearVelocity, transform.up);
         Vector3 horizVel = Vector3.ProjectOnPlane(_rb.linearVelocity, transform.up);
-        Vector3 newHorizVel = Vector3.MoveTowards(horizVel, Vector3.zero, _slideFriction * Time.deltaTime);
+        Vector3 newHorizVel = Vector3.MoveTowards(horizVel, Vector3.zero, _slideFriction * Time.fixedDeltaTime);
     
         _rb.linearVelocity = newHorizVel + vertVel;
 

@@ -55,11 +55,15 @@ public class GunController : MonoBehaviour
         transform.localEulerAngles = _gunRestRotation;
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
         HandleFireInput();
-        UpdateGunBob();
+    }
+
+    private void LateUpdate()
+    {
         UpdateRecoil();
+        UpdateGunBob();
     }
 
     // ─── Fire ─────────────────────────────────────────────────────────────────
