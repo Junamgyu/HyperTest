@@ -2,14 +2,6 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// 커스텀 중력 방향 기반 1인칭 이동.
-/// 
-/// 흐름:
-///   1. GravitySystem에서 중력 방향 변경 이벤트를 받는다
-///   2. useGravity = false 상태에서 새 방향으로 직접 힘을 가한다
-///   3. 새 벽에 착지하면 ReorientRoutine이 플레이어 body를 부드럽게 회전시킨다
-///   4. 재정렬 완료 후 WASD·마우스 조작이 새 방향 기준으로 정상 작동한다
 /// </summary>
 [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
 public class PlayerMovement : MonoBehaviour
@@ -75,6 +67,7 @@ public class PlayerMovement : MonoBehaviour
     private float _dashTimer;
     private float _dashCooldownTimer;
     private Vector3 _dashDirection;
+    
     // ─── Properties ───────────────────────────────────────────────────────────
     public bool IsGrounded => _isGrounded;
     public bool IsReorienting => _isReorienting;
@@ -315,7 +308,7 @@ public class PlayerMovement : MonoBehaviour
             Vector3 vertVel    = Vector3.Project(_rb.linearVelocity, transform.up);
             _rb.linearVelocity = _dashDirection * _dashSpeed + vertVel;
         }
-        
+
         if(_dashCooldownTimer > 0f)
             _dashCooldownTimer -= Time.deltaTime;
     }
@@ -343,13 +336,19 @@ public class PlayerMovement : MonoBehaviour
             StopReorientation();
         }
 
-        // 새 중력 방향으로의 속도 성분 제거
-        // (기존 낙하 관성 대신 새 방향으로 깨끗하게 전환)
-        Vector3 horizVel = Vector3.ProjectOnPlane(_rb.linearVelocity, _gravityDir);
-        _rb.linearVelocity     = horizVel;
+        //질질 끌려가는 상황 때문에 즉시 공중 상태로 강제 전환
+        _isGrounded = false;
+        _wasGrounded = false;
+        _coyoteTimer = 0f;
+        
+        _rb.linearVelocity = Vector3.zero;
+        
+        if(_isSliding)
+        {
+            _isSliding = false;
+            _mouseLook?.SetSlideCameraOffset(false);
+        _isDashing = false;}
 
-        // 착지 상태라면 즉시 공중으로 전환 (새 중력이 당기도록)
-        // → CheckGround가 다음 FixedUpdate에서 false를 반환하면 자연스럽게 Airborne 상태가 됨
     }
 
     // ─── Reorientation ────────────────────────────────────────────────────────

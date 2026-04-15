@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Unity.Cinemachine;
 
 /// <summary>
 /// 1인칭 마우스 시점 제어.
@@ -53,7 +52,7 @@ public class MouseLook : MonoBehaviour
         _targetCameraPivotY = _defaultCameraPivotY;
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         if(Keyboard.current.escapeKey.wasPressedThisFrame)
             LockCursor(!IsCursorLocked());
